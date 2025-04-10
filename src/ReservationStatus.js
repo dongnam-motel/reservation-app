@@ -1,20 +1,21 @@
 // src/ReservationStatus.js
 import { useState } from 'react';
 
+// 예약 가능한 객실 목록
 const rooms = ['102', '103', '105', '106', '107', '201', '202', '203', '205', '206', '207', '208'];
 const today = new Date();
 
-// 해당 월의 전체 일 수를 구하는 함수
+// 해당 월의 총 일수를 구하는 함수 (필요한 경우 활용)
 const getDaysInMonth = (year, month) => {
   return new Date(year, month + 1, 0).getDate();
 };
 
-// 날짜를 YYYY-MM-DD 형식으로 포맷하는 함수
+// 날짜를 YYYY-MM-DD 포맷으로 변환하는 함수
 const formatDate = (year, month, day) => {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
-// 예시 예약 데이터 (예약 날짜를 키로, 예약된 객실 번호 배열을 값으로 저장)
+// 예시 예약 데이터: 예약 날짜를 키로 하고, 예약된 객실 번호 배열을 값으로 저장
 const sampleReservations = {
   '2024-05-15': ['102', '103', '202', '203', '205', '208'],
 };
@@ -22,7 +23,7 @@ const sampleReservations = {
 export default function ReservationStatus() {
   const [selectedDate, setSelectedDate] = useState(null);
 
-  // 오늘부터 한 달 뒤까지 날짜 생성
+  // 오늘 날짜부터 한 달 뒤까지 날짜 배열 생성
   const startDate = today;
   const endDate = new Date(startDate);
   endDate.setMonth(endDate.getMonth() + 1);
@@ -34,11 +35,13 @@ export default function ReservationStatus() {
     temp.setDate(temp.getDate() + 1);
   }
 
-  // 날짜들을 연-월별로 그룹화 (예: 2025-03, 2025-04 등)
+  // 날짜를 "연-월"로 그룹화해서 객체 생성 (예: "2025-4" → 2025년 5월)
   const months = {};
   for (const date of dates) {
-    const key = `${date.getFullYear()}-${date.getMonth()}`; // 예: "2025-4"
-    if (!months[key]) months[key] = [];
+    const key = `${date.getFullYear()}-${date.getMonth()}`;
+    if (!months[key]) {
+      months[key] = [];
+    }
     months[key].push(date);
   }
 
@@ -48,19 +51,22 @@ export default function ReservationStatus() {
     setSelectedDate(dateKey);
   };
 
+  // 선택된 날짜에 해당하는 예약 데이터를 불러오고,
+  // 예약되지 않은 객실(빈 객실) 목록을 계산
   const reservedRooms = selectedDate ? sampleReservations[selectedDate] || [] : [];
-  const vacantRooms = rooms.filter(r => !reservedRooms.includes(r));
+  const vacantRooms = rooms.filter((r) => !reservedRooms.includes(r));
 
   return (
     <div className="p-4 max-w-md mx-auto">
       {/* 앱 타이틀 */}
       <h1 className="text-xl font-bold text-center mb-4">동남모텔 예약 현황판</h1>
 
-      {/* 달력 영역 (상단 카드) */}
+      {/* 달력 영역: 상단 카드 */}
       <div className="border rounded-xl p-4 bg-white mb-6">
         {Object.entries(months).map(([key, dateList]) => {
+          // key 예: "2025-4" → 2025년 5월
           const [year, month] = key.split('-').map(Number);
-          // 해당 달의 시작 날짜의 요일 (0: 일요일, 6: 토요일)
+          // 해당 달의 시작 날짜에 해당하는 요일(0: 일요일, …, 6: 토요일)
           const startWeekday = new Date(year, month, dateList[0].getDate()).getDay();
 
           return (
@@ -71,9 +77,11 @@ export default function ReservationStatus() {
               <div className="grid grid-cols-7 gap-2 text-center mb-4">
                 {/* 요일 헤더 */}
                 {[...'일월화수목금토'].map((d, i) => (
-                  <div key={i} className="font-medium text-sm">{d}</div>
+                  <div key={i} className="font-medium text-sm">
+                    {d}
+                  </div>
                 ))}
-                {/* 시작 요일에 맞춰 빈 공간 채우기 */}
+                {/* 시작 요일에 맞춰 빈 칸 채우기 */}
                 {Array.from({ length: startWeekday }, (_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
@@ -82,10 +90,16 @@ export default function ReservationStatus() {
                   <button
                     key={date.toISOString()}
                     onClick={() => handleDateClick(date)}
-                    className={`py-2 px-2 rounded-full text-sm transition-colors duration-200
-                      ${selectedDate === formatDate(date.getFullYear(), date.getMonth(), date.getDate())
-                        ? 'bg-black text-white'
-                        : 'hover:bg-gray-200'}`}
+                    className={`py-2 px-2 rounded-full text-sm transition-colors duration-200 
+                      ${
+                        selectedDate === formatDate(
+                          date.getFullYear(),
+                          date.getMonth(),
+                          date.getDate()
+                        )
+                          ? 'bg-black text-white'
+                          : 'hover:bg-gray-200'
+                      }`}
                   >
                     {date.getDate()}
                   </button>
@@ -96,11 +110,13 @@ export default function ReservationStatus() {
         })}
       </div>
 
-      {/* 예약 결과 영역 (하단 카드) */}
+      {/* 예약 결과 영역: 하단 카드 */}
       <div className="border rounded-xl p-4 bg-gray-50">
         {selectedDate ? (
           <div>
-            <h2 className="text-md font-semibold mb-2">예약 정보 ({selectedDate})</h2>
+            <h2 className="text-md font-semibold mb-2">
+              예약 정보 ({selectedDate})
+            </h2>
             <div className="mb-3 text-sm">
               예약된 객실: {reservedRooms.length ? reservedRooms.join(', ') : '없음'}
             </div>
