@@ -1,8 +1,11 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
 
 function App() {
-  return <h1>Reservation App</h1>;
+  return (
+    <div>
+      <h1>Reservation App</h1>  {/* 화면에 예약 앱 제목을 표시 */}
+    </div>
+  );
 }
 
-ReactDOM.render(<App />, document.getElementById('root'));
+export default App;
