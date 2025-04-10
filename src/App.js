@@ -3,14 +3,18 @@ import axios from 'axios';
 
 function App() {
   const [reservations, setReservations] = useState([]);
+  const [vacantRooms, setVacantRooms] = useState([]);
   
+  const rooms = ['102', '103', '105', '106', '107', '201', '202', '203', '205', '206', '207', '208'];
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await axios.get(
-          "https://sheets.googleapis.com/v4/spreadsheets/your-sheet-id/values/Sheet1?key=your-api-key"
+          "https://sheets.googleapis.com/v4/spreadsheets/1rq4DrKJDRHVaarAtiEXnYpjxcCAo_Toj5dfAN1SqBH8/values/Sheet1?key=AIzaSyBdarOU_dDq_lih-6VW2Ak5wokEYBly5aY"
         );
-        setReservations(response.data.values); // 데이터를 상태에 저장
+        
+        setReservations(response.data.values); 
       } catch (error) {
         console.error("Error fetching data", error);
       }
@@ -18,13 +22,29 @@ function App() {
     fetchData();
   }, []);
 
+  const getReservedRooms = (date) => {
+    const reserved = reservations.filter((reservation) => reservation[0] === date);
+    return reserved.map((r) => r[1]);
+  };
+
+  const reservedRooms = getReservedRooms('2024-05-15');
+  const vacantRooms = rooms.filter(room => !reservedRooms.includes(room));
+
   return (
     <div>
       <h1>Reservation App</h1>
+      <h2>예약된 객실</h2>
       <ul>
-        {reservations.map((reservation, index) => (
-          <li key={index}>{reservation[0]}</li>  {/* 예시로 예약된 날짜 또는 객실 번호 표시 */}
-        ))}
+        {reservedRooms.length > 0 ? reservedRooms.map((room, index) => (
+          <li key={index}>{room}</li>
+        )) : <li>없음</li>}
+      </ul>
+
+      <h2>비어 있는 객실</h2>
+      <ul>
+        {vacantRooms.length > 0 ? vacantRooms.map((room, index) => (
+          <li key={index}>{room}</li>
+        )) : <li>없음</li>}
       </ul>
     </div>
   );
