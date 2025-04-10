@@ -57,7 +57,7 @@ export default function ReservationStatus() {
   const vacantRooms = rooms.filter((r) => !reservedRooms.includes(r));
 
   return (
-    <div className="p-4 max-w-md mx-auto">
+    <div className="p-4 max-w-md mx-auto bg-red-200">
       {/* 앱 타이틀 */}
       <h1 className="text-xl font-bold text-center mb-4">동남모텔 예약 현황판</h1>
 
