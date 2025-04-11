@@ -39,13 +39,15 @@ export default function ReservationStatus() {
   }
 
   // Supabase에서 데이터 불러오기
-  useEffect(() => {
-    async function fetchReservations() {
-      const { data, error } = await supabase.from('reservations').select('*');
-      if (error) {
-        console.error('Supabase 오류:', error);
-        return;
-      }
+ useEffect(() => {
+  async function fetchReservations() {
+    const { data, error } = await supabase.from('reservations').select('*');
+    if (error) {
+      console.error('❌ Supabase 오류:', error);
+      return;
+    }
+    console.log('✅ Supabase에서 받은 데이터:', data); // 이거 찍히는지 꼭 보기!
+
 
       const grouped = {};
       data.forEach((item) => {
