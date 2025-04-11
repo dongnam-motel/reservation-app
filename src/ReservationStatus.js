@@ -17,7 +17,7 @@ const formatDate = (year, month, day) => {
 
 // 예시 예약 데이터: 예약 날짜를 키로 하고, 예약된 객실 번호 배열을 값으로 저장
 const sampleReservations = {
-  '2024-05-15': ['102', '103', '202', '203', '205', '208'],
+  '2024-04-15': ['102', '103', '202', '203', '205', '208'],
 };
 
 export default function ReservationStatus() {
