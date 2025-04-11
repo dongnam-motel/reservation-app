@@ -1,11 +1,9 @@
 import React from 'react';
-import ReservationStatus from './ReservationStatus'; // 기존 예약 현황 컴포넌트
-import GoogleAuth from './GoogleAuth'; // 방금 만든 GoogleAuth 컴포넌트
+import ReservationStatus from './ReservationStatus';
 
 function App() {
   return (
-    <div className="App">
-      <GoogleAuth />
+    <div className="bg-pink-100 min-h-screen flex items-center justify-center">
       <ReservationStatus />
     </div>
   );
