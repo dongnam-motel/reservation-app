@@ -1,32 +1,52 @@
-import { useState } from 'react';
-import { supabase } from './supabaseClient';
+// ReservationStatus.js
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-// 전체 객실 목록
+const supabaseUrl = 'https://qjrujlohkglfmghctiue.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFqcnVqbG9oa2dsZm1naGN0aXVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzMDg0ODQsImV4cCI6MjA1OTg4NDQ4NH0.lZHhfPjZ_CI6ERPjXvcf8657GcBraULMmAAIMfFzXms';
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 const rooms = ['102', '103', '105', '106', '107', '201', '202', '203', '205', '206', '207', '208'];
 const today = new Date();
 
-// 날짜 포맷: YYYY-MM-DD
 const formatDate = (year, month, day) => {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
 export default function ReservationStatus() {
   const [selectedDate, setSelectedDate] = useState(null);
-  const [reservedRooms, setReservedRooms] = useState([]);
+  const [reservationMap, setReservationMap] = useState({});
 
-  // 오늘부터 한 달 후까지의 날짜 배열 생성
-  const startDate = today;
-  const endDate = new Date(startDate);
+  useEffect(() => {
+    const fetchReservations = async () => {
+      const { data, error } = await supabase.from('reservations').select('*');
+      if (error) {
+        console.error('예약 데이터 가져오기 실패:', error);
+        return;
+      }
+
+      const grouped = {};
+      for (const item of data) {
+        const dateKey = item.reservation_date;
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(item.room_number);
+      }
+      setReservationMap(grouped);
+    };
+
+    fetchReservations();
+  }, []);
+
+  const endDate = new Date(today);
   endDate.setMonth(endDate.getMonth() + 1);
 
   const dates = [];
-  let temp = new Date(startDate);
+  let temp = new Date(today);
   while (temp < endDate) {
     dates.push(new Date(temp));
     temp.setDate(temp.getDate() + 1);
   }
 
-  // 달력 UI 구성을 위한 월별 그룹화
   const months = {};
   for (const date of dates) {
     const key = `${date.getFullYear()}-${date.getMonth()}`;
@@ -34,32 +54,18 @@ export default function ReservationStatus() {
     months[key].push(date);
   }
 
-  // 날짜 클릭 시 Supabase에서 해당 날짜의 예약 데이터 조회
-  const handleDateClick = async (date) => {
+  const handleDateClick = (date) => {
     const dateKey = formatDate(date.getFullYear(), date.getMonth(), date.getDate());
     setSelectedDate(dateKey);
-
-    const { data, error } = await supabase
-      .from('reservations')
-      .select('room_number')
-      .eq('reservation_date', dateKey);
-
-    if (error) {
-      console.error('예약 데이터 불러오기 실패:', error.message);
-      setReservedRooms([]);
-    } else {
-      const roomsReserved = data.map((item) => item.room_number);
-      setReservedRooms(roomsReserved);
-    }
   };
 
+  const reservedRooms = selectedDate ? reservationMap[selectedDate] || [] : [];
   const vacantRooms = rooms.filter((r) => !reservedRooms.includes(r));
 
   return (
-    <div className="p-4 max-w-md mx-auto">
+    <div className="p-4 max-w-md mx-auto bg-red-200">
       <h1 className="text-xl font-bold text-center mb-4">동남모텔 예약 현황판</h1>
 
-      {/* 달력 UI */}
       <div className="border rounded-xl p-4 bg-white mb-6">
         {Object.entries(months).map(([key, dateList]) => {
           const [year, month] = key.split('-').map(Number);
@@ -77,33 +83,31 @@ export default function ReservationStatus() {
                 {Array.from({ length: startWeekday }, (_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
-                {dateList.map((date) => {
-                  const dateKey = formatDate(date.getFullYear(), date.getMonth(), date.getDate());
-                  return (
-                    <button
-                      key={date.toISOString()}
-                      onClick={() => handleDateClick(date)}
-                      className={`py-2 px-2 rounded-full text-sm transition-colors duration-200 ${
-                        selectedDate === dateKey
-                          ? 'bg-black text-white'
-                          : 'hover:bg-gray-200'
-                      }`}
-                    >
-                      {date.getDate()}
-                    </button>
-                  );
-                })}
+                {dateList.map((date) => (
+                  <button
+                    key={date.toISOString()}
+                    onClick={() => handleDateClick(date)}
+                    className={`py-2 px-2 rounded-full text-sm transition-colors duration-200 ${
+                      selectedDate === formatDate(date.getFullYear(), date.getMonth(), date.getDate())
+                        ? 'bg-black text-white'
+                        : 'hover:bg-gray-200'
+                    }`}
+                  >
+                    {date.getDate()}
+                  </button>
+                ))}
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 예약 결과 영역 */}
       <div className="border rounded-xl p-4 bg-gray-50">
         {selectedDate ? (
           <div>
-            <h2 className="text-md font-semibold mb-2">예약 정보 ({selectedDate})</h2>
+            <h2 className="text-md font-semibold mb-2">
+              예약 정보 ({selectedDate})
+            </h2>
             <div className="mb-3 text-sm">
               예약된 객실: {reservedRooms.length ? reservedRooms.join(', ') : '없음'}
             </div>
