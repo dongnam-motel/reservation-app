@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { gapi } from 'gapi-script';
 
-const CLIENT_ID = '817829752684-4ikv5detrv6sc9j2nkhojab9je14v9pd.apps.googleusercontent.com'; // 정확히 입력!
+const CLIENT_ID = '181381672922-b1cng2kb031db4sbkuv6859bvjid74qn.apps.googleusercontent.com'; // 정확히 입력!
  // Google Cloud Console에서 발급받은 값을 입력하세요
 const API_KEY = 'YOUR_API_KEY'; // 만약 API 키가 필요하다면 입력, 또는 생략 가능
 const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
