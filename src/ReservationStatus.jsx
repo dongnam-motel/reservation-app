@@ -1,104 +1,97 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
+import dayjs from 'dayjs';
 
-const allRooms = ['102', '103', '105', '106', '107', '201', '202', '203', '205', '206', '207', '208'];
-
-function formatDate(date) {
-  return date.toISOString().split('T')[0];
-}
-
-function getDatesWithOffset(startDate, endDate) {
-  const dates = [];
-  const startDay = startDate.getDay();
-  for (let i = 0; i < startDay; i++) {
-    dates.push(null); // offset for start day
-  }
-  const current = new Date(startDate);
-  while (current <= endDate) {
-    dates.push(new Date(current));
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
-}
+const allRooms = [
+  '102', '103', '105', '106', '107',
+  '201', '202', '203', '205', '206', '207', '208'
+];
 
 export default function ReservationStatus() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [reservedRooms, setReservedRooms] = useState([]);
 
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth();
-
-  const aprilStart = new Date(currentYear, currentMonth, today.getDate());
-  const aprilEnd = new Date(currentYear, currentMonth, 30);
-
-  const nextMonth = (currentMonth + 1) % 12;
-  const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-  const mayStart = new Date(nextYear, nextMonth, 1);
-  const mayEnd = new Date(nextYear, nextMonth, today.getDate() - 1);
-
-  const aprilDates = getDatesWithOffset(aprilStart, aprilEnd);
-  const mayDates = getDatesWithOffset(mayStart, mayEnd);
-
   useEffect(() => {
     if (!selectedDate) return;
     const fetchData = async () => {
-      const dateString = formatDate(selectedDate);
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('reservations')
         .select('room_number')
-        .eq('reservation_date', dateString);
-
-      if (!error) {
-        const reserved = data.map(r => r.room_number);
-        setReservedRooms(reserved);
-      }
+        .eq('reservation_date', dayjs(selectedDate).format('YYYY-MM-DD'));
+      setReservedRooms(data?.map(r => r.room_number) || []);
     };
     fetchData();
   }, [selectedDate]);
 
-  const availableRooms = allRooms.filter(room => !reservedRooms.includes(room));
-  const isSameDate = (a, b) => a && b && formatDate(a) === formatDate(b);
+  const today = dayjs();
+  const nextMonthToday = today.add(1, 'month');
+  const lastDayCurrentMonth = today.endOf('month').date();
+  const startWeekday = today.day();
 
-  const renderDates = (dates) => (
-    <div className="grid grid-cols-7 text-center gap-y-1">
-      {dates.map((date, idx) => (
+  const endDate = nextMonthToday.subtract(1, 'day');
+  const firstDayNextMonth = nextMonthToday.startOf('month');
+  const nextStartWeekday = firstDayNextMonth.day();
+  const nextEndDay = endDate.date();
+
+  const renderDays = (start, end, offset, monthTitle) => {
+    const days = [];
+    for (let i = 0; i < offset; i++) {
+      days.push(<div key={`${monthTitle}-blank-${i}`}></div>);
+    }
+    for (let i = start; i <= end; i++) {
+      const dateObj = monthTitle.includes('4월')
+        ? today.date(i)
+        : firstDayNextMonth.date(i);
+      const formatted = dayjs(dateObj).format('YYYY-MM-DD');
+      days.push(
         <div
-          key={idx}
-          className={`py-1 cursor-pointer ${isSameDate(date, selectedDate) ? 'font-bold underline' : ''}`}
-          onClick={() => date && setSelectedDate(date)}
+          key={`${monthTitle}-${i}`}
+          onClick={() => setSelectedDate(formatted)}
+          className={`cursor-pointer ${formatted === dayjs(selectedDate).format('YYYY-MM-DD') ? 'font-bold underline' : ''}`}
         >
-          {date ? date.getDate() : ''}
+          {i}
         </div>
-      ))}
-    </div>
-  );
+      );
+    }
+    return (
+      <div className="mb-4">
+        <div className="text-center font-bold mb-2">{monthTitle}</div>
+        <div className="grid grid-cols-7 gap-y-2 text-center">{days}</div>
+      </div>
+    );
+  };
+
+  const emptyRooms = allRooms.filter(r => !reservedRooms.includes(r));
 
   return (
-    <div className="bg-pink-200 min-h-screen p-4">
-      <h1 className="text-3xl font-bold text-center mb-2">예약 현황</h1>
-      {/* 요일 */}
+    <div className="min-h-screen bg-pink-200 p-4">
+      <h1 className="text-center text-3xl font-bold mb-2">예약 현황</h1>
       <div className="grid grid-cols-7 text-center font-semibold mb-2">
         {['일', '월', '화', '수', '목', '금', '토'].map(day => (
           <div key={day}>{day}</div>
         ))}
       </div>
-      <div className="bg-pink-100 p-4 rounded-xl shadow-md max-w-3xl mx-auto">
-        <div className="text-center font-bold mb-1">2025년 4월</div>
-        {renderDates(aprilDates)}
-        <div className="text-center font-bold mt-4 mb-1">2025년 5월</div>
-        {renderDates(mayDates)}
+      <div className="bg-pink-100 rounded-md p-4">
+        {renderDays(today.date(), lastDayCurrentMonth, startWeekday, `${today.year()}년 ${today.month() + 1}월`)}
+        {renderDays(1, nextEndDay, nextStartWeekday, `${nextMonthToday.year()}년 ${nextMonthToday.month() + 1}월`)}
       </div>
-      <div className="mt-6 p-4 bg-white rounded-xl shadow-md max-w-2xl mx-auto text-center">
+      <div className="bg-white rounded-md shadow-md mt-6 p-4 text-center">
         {selectedDate ? (
           <>
-            <p className="font-bold">선택일: <span className="font-normal">{formatDate(selectedDate)}</span></p>
-            <br />
-            <p className="font-bold">예약된 객실: <span className="font-normal">{reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}</span></p>
-            <p className="font-bold">빈 객실: <span className="font-normal">{availableRooms.length > 0 ? availableRooms.join(', ') : '없음'}</span></p>
+            <p className="mb-2">
+              <span className="font-semibold">선택일:</span> {dayjs(selectedDate).format('YYYY-MM-DD')}
+            </p>
+            <p className="mb-2">
+              <span className="font-semibold">예약된 객실:</span>{' '}
+              {reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}
+            </p>
+            <p>
+              <span className="font-semibold">빈 객실:</span>{' '}
+              {emptyRooms.length > 0 ? emptyRooms.join(', ') : '없음'}
+            </p>
           </>
         ) : (
-          <p className="text-gray-600">날짜를 선택하면 예약 정보가 표시됩니다.</p>
+          <p>날짜를 선택하면 예약 정보가 표시됩니다.</p>
         )}
       </div>
     </div>
