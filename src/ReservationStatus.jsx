@@ -7,10 +7,14 @@ function formatDate(date) {
   return date.toISOString().split('T')[0];
 }
 
-function getDatesInRange(start, end) {
+function getDatesWithOffset(startDate, endDate) {
   const dates = [];
-  const current = new Date(start);
-  while (current <= end) {
+  const startDay = startDate.getDay();
+  for (let i = 0; i < startDay; i++) {
+    dates.push(null); // offset for start day
+  }
+  const current = new Date(startDate);
+  while (current <= endDate) {
     dates.push(new Date(current));
     current.setDate(current.getDate() + 1);
   }
@@ -18,112 +22,83 @@ function getDatesInRange(start, end) {
 }
 
 export default function ReservationStatus() {
-  const today = new Date();
-  const nextMonth = new Date(today);
-  nextMonth.setMonth(today.getMonth() + 1);
-
-  const aprilStart = new Date(today);
-  const aprilEnd = new Date(today);
-  aprilEnd.setMonth(aprilEnd.getMonth() + 1);
-  aprilEnd.setDate(today.getDate() - 1);
-
-  const mayStart = new Date(today);
-  mayStart.setMonth(today.getMonth() + 1);
-  mayStart.setDate(1);
-  const mayEnd = new Date(today);
-  mayEnd.setMonth(today.getMonth() + 1);
-  mayEnd.setDate(today.getDate() - 1);
-
-  const aprilDates = getDatesInRange(aprilStart, aprilEnd);
-  const mayDates = getDatesInRange(mayStart, mayEnd);
-
   const [selectedDate, setSelectedDate] = useState(null);
   const [reservedRooms, setReservedRooms] = useState([]);
 
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const aprilStart = new Date(currentYear, currentMonth, today.getDate());
+  const aprilEnd = new Date(currentYear, currentMonth, 30);
+
+  const nextMonth = (currentMonth + 1) % 12;
+  const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
+  const mayStart = new Date(nextYear, nextMonth, 1);
+  const mayEnd = new Date(nextYear, nextMonth, today.getDate() - 1);
+
+  const aprilDates = getDatesWithOffset(aprilStart, aprilEnd);
+  const mayDates = getDatesWithOffset(mayStart, mayEnd);
+
   useEffect(() => {
     if (!selectedDate) return;
-
-    const fetchReservations = async () => {
-      const { data } = await supabase
+    const fetchData = async () => {
+      const dateString = formatDate(selectedDate);
+      const { data, error } = await supabase
         .from('reservations')
         .select('room_number')
-        .eq('reservation_date', formatDate(selectedDate));
+        .eq('reservation_date', dateString);
 
-      setReservedRooms(data ? data.map((r) => r.room_number) : []);
+      if (!error) {
+        const reserved = data.map(r => r.room_number);
+        setReservedRooms(reserved);
+      }
     };
-
-    fetchReservations();
+    fetchData();
   }, [selectedDate]);
 
+  const availableRooms = allRooms.filter(room => !reservedRooms.includes(room));
   const isSameDate = (a, b) => a && b && formatDate(a) === formatDate(b);
-  const blankDays = (date) => Array.from({ length: date.getDay() }, (_, i) => <div key={`b${i}`} />);
+
+  const renderDates = (dates) => (
+    <div className="grid grid-cols-7 text-center gap-y-1">
+      {dates.map((date, idx) => (
+        <div
+          key={idx}
+          className={`py-1 cursor-pointer ${isSameDate(date, selectedDate) ? 'font-bold underline' : ''}`}
+          onClick={() => date && setSelectedDate(date)}
+        >
+          {date ? date.getDate() : ''}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="bg-pink-200 min-h-screen p-4">
       <h1 className="text-3xl font-bold text-center mb-2">예약 현황</h1>
-
-      {/* 요일 표시 */}
-      <div className="grid grid-cols-7 text-center font-semibold mb-1">
-        {['일', '월', '화', '수', '목', '금', '토'].map((d) => (
-          <div key={d}>{d}</div>
+      {/* 요일 */}
+      <div className="grid grid-cols-7 text-center font-semibold mb-2">
+        {['일', '월', '화', '수', '목', '금', '토'].map(day => (
+          <div key={day}>{day}</div>
         ))}
       </div>
-
       <div className="bg-pink-100 p-4 rounded-xl shadow-md max-w-3xl mx-auto">
-        {/* 4월 */}
         <div className="text-center font-bold mb-1">2025년 4월</div>
-        <div className="grid grid-cols-7 text-center mb-4">
-          {blankDays(aprilDates[0])}
-          {aprilDates.map((date, idx) => (
-            <div
-              key={`a${idx}`}
-              onClick={() => setSelectedDate(date)}
-              className={`cursor-pointer py-1 ${isSameDate(date, selectedDate) ? 'font-bold underline' : ''}`}
-            >
-              {date.getDate()}
-            </div>
-          ))}
-        </div>
-
-        {/* 5월 */}
-        <div className="text-center font-bold mb-1">2025년 5월</div>
-        <div className="grid grid-cols-7 text-center">
-          {blankDays(mayDates[0])}
-          {mayDates.map((date, idx) => (
-            <div
-              key={`m${idx}`}
-              onClick={() => setSelectedDate(date)}
-              className={`cursor-pointer py-1 ${isSameDate(date, selectedDate) ? 'font-bold underline' : ''}`}
-            >
-              {date.getDate()}
-            </div>
-          ))}
-        </div>
+        {renderDates(aprilDates)}
+        <div className="text-center font-bold mt-4 mb-1">2025년 5월</div>
+        {renderDates(mayDates)}
       </div>
-
-      {/* 결과 표시창 */}
       <div className="mt-6 p-4 bg-white rounded-xl shadow-md max-w-2xl mx-auto text-center">
         {selectedDate ? (
           <>
-            <p className="font-bold">
-              선택일: <span className="font-normal">{formatDate(selectedDate)}</span>
-            </p>
+            <p className="font-bold">선택일: <span className="font-normal">{formatDate(selectedDate)}</span></p>
             <br />
-            <p className="font-bold">
-              예약된 객실:{' '}
-              <span className="font-normal">
-                {reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}
-              </span>
-            </p>
-            <p className="font-bold">
-              빈 객실:{' '}
-              <span className="font-normal">
-                {allRooms.filter((room) => !reservedRooms.includes(room)).join(', ')}
-              </span>
-            </p>
+            <p className="font-bold">예약된 객실: <span className="font-normal">{reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}</span></p>
+            <p className="font-bold">빈 객실: <span className="font-normal">{availableRooms.length > 0 ? availableRooms.join(', ') : '없음'}</span></p>
           </>
         ) : (
-          <p>날짜를 선택하면 예약 정보가 표시됩니다.</p>
+          <p className="text-gray-600">날짜를 선택하면 예약 정보가 표시됩니다.</p>
         )}
       </div>
     </div>
