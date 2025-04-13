@@ -1,127 +1,104 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import React, { useEffect, useState } from 'react'
+import { supabase } from './supabaseClient'
 
-// Supabase 연결
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
-
-const rooms = ['102', '103', '105', '106', '107', '201', '202', '203', '205', '206', '207', '208'];
+const allRooms = [102, 103, 105, 106, 107, 201, 202, 203, 205, 206, 207, 208]
 
 function formatDate(date) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return date.toISOString().split('T')[0]
+}
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+         a.getMonth() === b.getMonth() &&
+         a.getDate() === b.getDate()
 }
 
 export default function ReservationStatus() {
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [reservedRooms, setReservedRooms] = useState([])
 
   useEffect(() => {
     const fetchReservations = async () => {
       const { data, error } = await supabase
         .from('reservations')
-        .select('reservation_date, room_number');
-      if (error) console.error(error);
-      else setReservations(data);
-      setLoading(false);
-    };
-    fetchReservations();
-  }, []);
+        .select('room_number')
+        .eq('reservation_date', formatDate(selectedDate))
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const thisMonth = today.getMonth();
-  const nextMonth = (thisMonth + 1) % 12;
-  const thisYear = today.getFullYear();
-  const nextMonthYear = thisMonth === 11 ? thisYear + 1 : thisYear;
-
-  const getLastDayOfMonth = (year, month) => {
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  const buildMonthDates = (year, month, startDay, endDay) => {
-    const firstWeekday = new Date(year, month, startDay).getDay();
-    const dateList = [];
-    for (let i = startDay; i <= endDay; i++) {
-      dateList.push(new Date(year, month, i));
+      if (!error) {
+        const reserved = data.map((r) => r.room_number)
+        setReservedRooms(reserved)
+      } else {
+        console.error(error)
+      }
     }
-    return { firstWeekday, dateList };
-  };
 
-  const thisMonthStart = today.getDate();
-  const thisMonthEnd = getLastDayOfMonth(thisYear, thisMonth);
-  const nextMonthStart = 1;
-  const nextMonthEnd = today.getDate() - 1;
+    fetchReservations()
+  }, [selectedDate])
 
-  const thisMonthDates = buildMonthDates(thisYear, thisMonth, thisMonthStart, thisMonthEnd);
-  const nextMonthDates = buildMonthDates(nextMonthYear, nextMonth, nextMonthStart, nextMonthEnd);
+  const availableRooms = allRooms.filter((room) => !reservedRooms.includes(room))
 
-  const handleDateClick = (date) => {
-    setSelectedDate(formatDate(date));
-  };
+  const today = new Date()
+  const nextMonth = new Date(today)
+  nextMonth.setMonth(today.getMonth() + 1)
 
-  const getReservedRooms = (dateStr) =>
-    reservations.filter(r => r.reservation_date === dateStr).map(r => r.room_number);
+  const calendarDates = []
 
-  const reservedRooms = selectedDate ? getReservedRooms(selectedDate) : [];
-  const vacantRooms = rooms.filter(r => !reservedRooms.includes(r));
+  // 1️⃣ 이번달: 오늘 ~ 말일까지
+  const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+  for (let d = new Date(today); d <= lastDayThisMonth; d.setDate(d.getDate() + 1)) {
+    calendarDates.push(new Date(d))
+  }
 
-  const renderMonthBlock = (title, { firstWeekday, dateList }) => (
-    <div className="mb-8" key={title}>
-      <div className="text-lg font-semibold text-center mb-2">{title}</div>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm font-medium mb-2">
-        {[...'일월화수목금토'].map((d, i) => <div key={i}>{d}</div>)}
-      </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-sm">
-        {Array.from({ length: firstWeekday }).map((_, i) => (
-          <div key={`empty-${i}`} />
-        ))}
-        {dateList.map(date => {
-          const dateStr = formatDate(date);
-          const isSelected = selectedDate === dateStr;
-          return (
-            <div
-              key={dateStr}
-              onClick={() => handleDateClick(date)}
-              className={`cursor-pointer py-1 select-none ${isSelected ? 'font-bold' : ''}`}
-            >
-              {date.getDate()}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  // 2️⃣ 다음달: 1일 ~ 다음달 오늘 전날까지
+  const cutoffNext = new Date(today)
+  cutoffNext.setMonth(today.getMonth() + 1)
+  cutoffNext.setDate(today.getDate() - 1)
+  for (
+    let d = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1);
+    d <= cutoffNext;
+    d.setDate(d.getDate() + 1)
+  ) {
+    calendarDates.push(new Date(d))
+  }
 
   return (
-    <div className="min-h-screen bg-red-200 p-4">
-      <h1 className="text-2xl font-bold text-center mb-6">예약 현황</h1>
+    <div className="bg-red-200 min-h-screen p-4">
+      <h1 className="text-2xl font-bold mb-4">예약 현황</h1>
 
-      <div className="bg-white border border-gray-300 rounded-lg p-4 mb-6">
-        {renderMonthBlock(`${thisYear}년 ${thisMonth + 1}월`, thisMonthDates)}
-        {nextMonthEnd > 0 &&
-          renderMonthBlock(`${nextMonthYear}년 ${nextMonth + 1}월`, nextMonthDates)}
-      </div>
+      {/* 월별 구분 */}
+      {[0, 1].map((monthOffset) => {
+        const refDate = new Date()
+        refDate.setMonth(refDate.getMonth() + monthOffset)
+        const label = `${refDate.getFullYear()}년 ${refDate.getMonth() + 1}월`
+        const monthDates = calendarDates.filter(
+          (d) => d.getMonth() === refDate.getMonth()
+        )
 
-      <div className="bg-white border border-gray-300 rounded-lg p-4">
-        {loading ? (
-          <div className="text-center text-gray-500 text-sm">로딩 중...</div>
-        ) : selectedDate ? (
-          <>
-            <h2 className="text-md font-semibold mb-2">예약 정보 ({selectedDate})</h2>
-            <div className="text-sm mb-1">예약된 객실: {reservedRooms.length ? reservedRooms.join(', ') : '없음'}</div>
-            <div className="text-sm">빈 객실: {vacantRooms.length ? vacantRooms.join(', ') : '없음'}</div>
-          </>
-        ) : (
-          <div className="text-center text-gray-500 text-sm">날짜를 선택하면 예약 정보가 표시됩니다.</div>
-        )}
+        return (
+          <div key={monthOffset} className="mb-6">
+            <h2 className="font-bold text-lg mb-2">{label}</h2>
+            <div className="flex flex-wrap gap-2">
+              {monthDates.map((date, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedDate(new Date(date))}
+                  className="px-2"
+                >
+                  {isSameDay(date, selectedDate)
+                    ? <strong>{date.getDate()}</strong>
+                    : date.getDate()}
+                </button>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+
+      <div className="mt-4">
+        <p><strong>선택일:</strong> {formatDate(selectedDate)}</p>
+        <p>예약된 객실: {reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}</p>
+        <p>빈 객실: {availableRooms.join(', ')}</p>
       </div>
     </div>
-  );
+  )
 }
