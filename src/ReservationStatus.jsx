@@ -1,104 +1,96 @@
-import React, { useEffect, useState } from 'react'
-import { supabase } from './supabaseClient'
+import React, { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-const allRooms = [102, 103, 105, 106, 107, 201, 202, 203, 205, 206, 207, 208]
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
+
+const ALL_ROOMS = [
+  "102", "103", "105", "106", "107",
+  "201", "202", "203", "205", "206", "207", "208"
+];
 
 function formatDate(date) {
-  return date.toISOString().split('T')[0]
+  return date.toISOString().split("T")[0];
 }
 
-function isSameDay(a, b) {
-  return a.getFullYear() === b.getFullYear() &&
-         a.getMonth() === b.getMonth() &&
-         a.getDate() === b.getDate()
-}
-
-export default function ReservationStatus() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [reservedRooms, setReservedRooms] = useState([])
+function ReservationStatus() {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [reservations, setReservations] = useState([]);
 
   useEffect(() => {
+    if (!selectedDate) return;
+
     const fetchReservations = async () => {
       const { data, error } = await supabase
-        .from('reservations')
-        .select('room_number')
-        .eq('reservation_date', formatDate(selectedDate))
+        .from("reservations")
+        .select("*")
+        .eq("reservation_date", formatDate(selectedDate));
 
-      if (!error) {
-        const reserved = data.map((r) => r.room_number)
-        setReservedRooms(reserved)
+      if (error) {
+        console.error("Error fetching reservations:", error);
       } else {
-        console.error(error)
+        setReservations(data || []);
       }
-    }
+    };
 
-    fetchReservations()
-  }, [selectedDate])
+    fetchReservations();
+  }, [selectedDate]);
 
-  const availableRooms = allRooms.filter((room) => !reservedRooms.includes(room))
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + 1);
 
-  const today = new Date()
-  const nextMonth = new Date(today)
-  nextMonth.setMonth(today.getMonth() + 1)
+  const calendarDates = [];
+  const currentDate = new Date(startDate);
 
-  const calendarDates = []
-
-  // 1️⃣ 이번달: 오늘 ~ 말일까지
-  const lastDayThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-  for (let d = new Date(today); d <= lastDayThisMonth; d.setDate(d.getDate() + 1)) {
-    calendarDates.push(new Date(d))
+  while (currentDate < endDate) {
+    calendarDates.push(new Date(currentDate));
+    currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // 2️⃣ 다음달: 1일 ~ 다음달 오늘 전날까지
-  const cutoffNext = new Date(today)
-  cutoffNext.setMonth(today.getMonth() + 1)
-  cutoffNext.setDate(today.getDate() - 1)
-  for (
-    let d = new Date(nextMonth.getFullYear(), nextMonth.getMonth(), 1);
-    d <= cutoffNext;
-    d.setDate(d.getDate() + 1)
-  ) {
-    calendarDates.push(new Date(d))
-  }
+  const bookedRooms = [...new Set(reservations.map(r => r.room_number))];
+  const availableRooms = ALL_ROOMS.filter(room => !bookedRooms.includes(room));
 
   return (
-    <div className="bg-red-200 min-h-screen p-4">
-      <h1 className="text-2xl font-bold mb-4">예약 현황</h1>
+    <div className="bg-red-200 min-h-screen p-6 text-center">
+      <h1 className="text-3xl font-bold mb-6">예약 현황</h1>
 
-      {/* 월별 구분 */}
-      {[0, 1].map((monthOffset) => {
-        const refDate = new Date()
-        refDate.setMonth(refDate.getMonth() + monthOffset)
-        const label = `${refDate.getFullYear()}년 ${refDate.getMonth() + 1}월`
-        const monthDates = calendarDates.filter(
-          (d) => d.getMonth() === refDate.getMonth()
-        )
+      <div className="border border-gray-400 inline-block p-4 mb-6">
+        {calendarDates.map((date, index) => {
+          const isSelected = formatDate(date) === formatDate(selectedDate);
+          const isFirst = index === 0;
+          const label =
+            isFirst || date.getDate() === 1
+              ? `${date.getFullYear()}년 ${date.getMonth() + 1}월`
+              : "";
 
-        return (
-          <div key={monthOffset} className="mb-6">
-            <h2 className="font-bold text-lg mb-2">{label}</h2>
-            <div className="flex flex-wrap gap-2">
-              {monthDates.map((date, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setSelectedDate(new Date(date))}
-                  className="px-2"
-                >
-                  {isSameDay(date, selectedDate)
-                    ? <strong>{date.getDate()}</strong>
-                    : date.getDate()}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
+          return (
+            <React.Fragment key={date.toISOString()}>
+              {label && (
+                <div className="font-semibold mt-2 mb-1">{label}</div>
+              )}
+              <button
+                onClick={() => setSelectedDate(date)}
+                className={`mx-1 ${
+                  isSelected ? "font-bold underline" : ""
+                }`}
+              >
+                {date.getDate()}
+              </button>
+            </React.Fragment>
+          );
+        })}
+      </div>
 
-      <div className="mt-4">
+      <div className="bg-white rounded p-4 text-left max-w-md mx-auto">
         <p><strong>선택일:</strong> {formatDate(selectedDate)}</p>
-        <p>예약된 객실: {reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}</p>
-        <p>빈 객실: {availableRooms.join(', ')}</p>
+        <p><strong>예약된 객실:</strong> {bookedRooms.length > 0 ? bookedRooms.join(", ") : "없음"}</p>
+        <p><strong>빈 객실:</strong> {availableRooms.join(", ")}</p>
       </div>
     </div>
-  )
+  );
 }
+
+export default ReservationStatus;
