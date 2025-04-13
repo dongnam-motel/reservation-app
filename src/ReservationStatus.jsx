@@ -98,7 +98,6 @@ export default function ReservationStatus() {
             <p><strong>선택일:</strong> {formatDate(selectedDate)}</p>
             <br />
             <p><strong>예약된 객실:</strong> {reservations.length > 0 ? reservations.join(", ") : "없음"}</p>
-            <br />
             <p><strong>빈 객실:</strong> {availableRooms.length > 0 ? availableRooms.join(", ") : "없음"}</p>
           </>
         ) : (
