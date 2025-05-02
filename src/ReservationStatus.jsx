@@ -17,7 +17,7 @@ export default function ReservationStatus() {
       const { data } = await supabase
         .from('reservations')
         .select('room_number')
-        .eq('reservation_date', dayjs(selectedDate).format('YYYY-MM-DD'));
+        .eq('reservation_date', dayjs(selectedDate).format('YYYY-MM-DD')); // dayjs로 날짜 포맷 처리
       setReservedRooms(data?.map(r => r.room_number) || []);
     };
     fetchData();
@@ -46,7 +46,7 @@ export default function ReservationStatus() {
       days.push(
         <div
           key={`${monthTitle}-${i}`}
-          onClick={() => setSelectedDate(formatted)}
+          onClick={() => setSelectedDate(formatted)} // 날짜 클릭 시 selectedDate 업데이트
           className={`cursor-pointer ${formatted === dayjs(selectedDate).format('YYYY-MM-DD') ? 'font-bold underline' : ''}`}
         >
           {i}
