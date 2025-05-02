@@ -17,7 +17,7 @@ export default function ReservationStatus() {
       const { data } = await supabase
         .from('reservations')
         .select('room_number')
-        .eq('reservation_date', dayjs(selectedDate).format('YYYY-MM-DD')); // dayjs로 날짜 포맷 처리
+        .eq('reservation_date', dayjs(selectedDate).format('YYYY-MM-DD'));
       setReservedRooms(data?.map(r => r.room_number) || []);
     };
     fetchData();
@@ -33,20 +33,18 @@ export default function ReservationStatus() {
   const nextStartWeekday = firstDayNextMonth.day();
   const nextEndDay = endDate.date();
 
-  const renderDays = (start, end, offset, monthTitle) => {
+  const renderDays = (start, end, offset, monthTitle, month) => {
     const days = [];
     for (let i = 0; i < offset; i++) {
       days.push(<div key={`${monthTitle}-blank-${i}`}></div>);
     }
     for (let i = start; i <= end; i++) {
-      const dateObj = monthTitle.includes('4월')
-        ? today.date(i)
-        : firstDayNextMonth.date(i);
+      const dateObj = month === 'current' ? today.date(i) : firstDayNextMonth.date(i);
       const formatted = dayjs(dateObj).format('YYYY-MM-DD');
       days.push(
         <div
           key={`${monthTitle}-${i}`}
-          onClick={() => setSelectedDate(formatted)} // 날짜 클릭 시 selectedDate 업데이트
+          onClick={() => setSelectedDate(formatted)} 
           className={`cursor-pointer ${formatted === dayjs(selectedDate).format('YYYY-MM-DD') ? 'font-bold underline' : ''}`}
         >
           {i}
@@ -72,8 +70,8 @@ export default function ReservationStatus() {
         ))}
       </div>
       <div className="bg-pink-100 rounded-md p-4">
-        {renderDays(today.date(), lastDayCurrentMonth, startWeekday, `${today.year()}년 ${today.month() + 1}월`)}
-        {renderDays(1, nextEndDay, nextStartWeekday, `${nextMonthToday.year()}년 ${nextMonthToday.month() + 1}월`)}
+        {renderDays(today.date(), lastDayCurrentMonth, startWeekday, `${today.year()}년 ${today.month() + 1}월`, 'current')}
+        {renderDays(1, nextEndDay, nextStartWeekday, `${nextMonthToday.year()}년 ${nextMonthToday.month() + 1}월`, 'next')}
       </div>
       <div className="bg-white rounded-md shadow-md mt-6 p-4 text-center">
         {selectedDate ? (
