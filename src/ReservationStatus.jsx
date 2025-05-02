@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import dayjs from 'dayjs';
 
+// 107과 201을 방 목록에서 아예 제외
 const allRooms = [
-  '102', '103', '105', '106', '107',
-  '201', '202', '203', '205', '206', '207', '208'
+  '102', '103', '105', '106', 
+  '202', '203', '205', '206', '207', '208'
 ];
 
 export default function ReservationStatus() {
@@ -33,10 +34,6 @@ export default function ReservationStatus() {
   const nextStartWeekday = firstDayNextMonth.day();
   const nextEndDay = endDate.date();
 
-  // 예약된 객실 중 달방(107, 201)을 제외
-  const excludedRooms = ['107', '201'];
-  const filteredReservedRooms = reservedRooms.filter(room => !excludedRooms.includes(room));
-
   const renderDays = (start, end, offset, monthTitle, month) => {
     const days = [];
     for (let i = 0; i < offset; i++) {
@@ -63,7 +60,8 @@ export default function ReservationStatus() {
     );
   };
 
-  const emptyRooms = allRooms.filter(r => !filteredReservedRooms.includes(r));
+  // 빈 객실 목록에서 이미 제외된 방이므로, reservedRooms만 필터링하면 됩니다.
+  const emptyRooms = allRooms.filter(r => !reservedRooms.includes(r));
 
   return (
     <div className="min-h-screen bg-pink-200 p-4">
@@ -85,7 +83,7 @@ export default function ReservationStatus() {
             </p>
             <p className="mb-2">
               <span className="font-semibold">예약된 객실:</span>{' '}
-              {filteredReservedRooms.length > 0 ? filteredReservedRooms.join(', ') : '없음'}
+              {reservedRooms.length > 0 ? reservedRooms.join(', ') : '없음'}
             </p>
             <p>
               <span className="font-semibold">빈 객실:</span>{' '}
