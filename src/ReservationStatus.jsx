@@ -4,8 +4,8 @@ import dayjs from 'dayjs';
 
 // 107과 201을 방 목록에서 아예 제외
 const allRooms = [
-  '102', '103', '105', '106', 
-  '202', '203', '205', '206', '207', '208'
+  '102', '103', '106', 
+  '201', '202', '203', '205', '206', '207', '208'
 ];
 
 export default function ReservationStatus() {
