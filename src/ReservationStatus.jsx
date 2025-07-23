@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import dayjs from 'dayjs';
 
-// 107과 201을 방 목록에서 아예 제외
+// 107과 201을 방 목록에서 아예 제외 -> 다시 추가
 const allRooms = [
-  '102', '103', '106', 
+  '102', '103', '105, '106', '107',
   '201', '202', '203', '205', '206', '207', '208'
 ];
 
